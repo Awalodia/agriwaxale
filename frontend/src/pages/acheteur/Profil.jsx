@@ -1,0 +1,62 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../../api/axios';
+
+export default function ProfilAcheteur() {
+    const [nom, setNom] = useState('');
+    const [telephone, setTelephone] = useState('');
+    const [localisation, setLocalisation] = useState('');
+    const [adresseLivraison, setAdresseLivraison] = useState('');
+    const [messageOk, setMessageOk] = useState(false);
+    const [erreur, setErreur] = useState('');
+
+    useEffect(() => {
+        api.get('/profile').then((res) => {
+            setNom(res.data.name);
+            setTelephone(res.data.telephone || '');
+            setLocalisation(res.data.localisation || '');
+            setAdresseLivraison(res.data.acheteur?.adresse_livraison || '');
+        });
+    }, []);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErreur('');
+        setMessageOk(false);
+        try {
+            // On enverra ces champs à une future route PUT /api/profile
+            await api.put('/profile', { name: nom, telephone, localisation, adresse_livraison: adresseLivraison });
+            setMessageOk(true);
+        } catch (err) {
+            setErreur('Erreur lors de la mise à jour.');
+        }
+    };
+
+    return (
+        <div style={{ maxWidth: 500, margin: '30px auto' }}>
+            <Link to="/acheteur">← Retour à mon espace</Link>
+            <h1>Mon profil</h1>
+            <form onSubmit={handleSubmit}>
+                <div>
+                    <label>Nom : </label>
+                    <input value={nom} onChange={(e) => setNom(e.target.value)} required />
+                </div>
+                <div>
+                    <label>Téléphone : </label>
+                    <input value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+                </div>
+                <div>
+                    <label>Localisation : </label>
+                    <input value={localisation} onChange={(e) => setLocalisation(e.target.value)} />
+                </div>
+                <div>
+                    <label>Adresse de livraison habituelle : </label>
+                    <input value={adresseLivraison} onChange={(e) => setAdresseLivraison(e.target.value)} />
+                </div>
+                {messageOk && <p style={{ color: 'green' }}>Profil mis à jour.</p>}
+                {erreur && <p style={{ color: 'red' }}>{erreur}</p>}
+                <button type="submit">Enregistrer</button>
+            </form>
+        </div>
+    );
+}

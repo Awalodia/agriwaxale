@@ -21,6 +21,7 @@ Route::get('/categories', [CategorieController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
 
     // Producteur
     Route::post('/offres', [OffreController::class, 'store']);

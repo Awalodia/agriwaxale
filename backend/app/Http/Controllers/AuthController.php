@@ -87,4 +87,28 @@ class AuthController extends Controller
     {
         return response()->json($request->user()->load(['acheteur', 'producteur', 'administrateur']));
     }
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'telephone' => 'nullable|string',
+            'localisation' => 'nullable|string',
+            'adresse_livraison' => 'nullable|string',
+        ]);
+
+        $user->update([
+            'name' => $validated['name'] ?? $user->name,
+            'telephone' => $validated['telephone'] ?? $user->telephone,
+            'localisation' => $validated['localisation'] ?? $user->localisation,
+        ]);
+
+        if ($user->acheteur && isset($validated['adresse_livraison'])) {
+            $user->acheteur->update(['adresse_livraison' => $validated['adresse_livraison']]);
+        }
+
+        return response()->json($user->load(['acheteur', 'producteur', 'administrateur']));
+    }
 }
+
