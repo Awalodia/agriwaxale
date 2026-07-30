@@ -10,7 +10,14 @@ class OffreController extends Controller
     // Consulter le catalogue — accessible à tous (Visiteur inclus)
     public function index(Request $request)
     {
-        $query = Offre::with(['producteur.user', 'categorie'])->where('statut', 'disponible');
+        $query = Offre::with(['producteur.user', 'categorie']);
+        $user = auth('sanctum')->user();
+
+        if ($request->boolean('mine') && $user) {
+            $query->where('producteur_id', $user->producteur?->id);
+        } else {
+            $query->where('statut', 'disponible');
+        }
 
         // Rechercher un produit / filtrage (catégorie, zone géographique, prix)
         if ($request->has('categorie_id')) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
 
-export default function DetailNegociation() {
+export default function RepondreNegociation() {
     const { id } = useParams();
     const [negociation, setNegociation] = useState(null);
     const [prixContre, setPrixContre] = useState('');
@@ -24,7 +24,7 @@ export default function DetailNegociation() {
             charger();
             setAfficherContre(false);
         } catch (err) {
-            setErreur("Action impossible pour le moment.");
+            setErreur('Action impossible pour le moment.');
         }
     };
 
@@ -39,14 +39,14 @@ export default function DetailNegociation() {
 
     if (!negociation) return <p>Chargement...</p>;
 
-    const derniereProposition = negociation.propositions[negociation.propositions.length - 1];
     const enCours = negociation.statut === 'en_cours';
 
     return (
         <div style={{ maxWidth: 600, margin: '30px auto' }}>
-            <Link to="/acheteur">← Retour à mon espace</Link>
-            <h1>Négociation — {negociation.offre?.nom_produit}</h1>
+            <Link to="/producteur">← Retour à mon espace</Link>
+            <h1>Négociation reçue — {negociation.offre?.nom_produit}</h1>
             <p>Statut : <strong>{negociation.statut}</strong></p>
+            <p>Acheteur : {negociation.acheteur?.user?.name}</p>
 
             <h3>Historique des propositions</h3>
             {negociation.propositions.map((p) => (
@@ -80,10 +80,11 @@ export default function DetailNegociation() {
                         <form onSubmit={handleContreProposition}>
                             <div>
                                 <label>Nouveau prix proposé : </label>
-                                <input type="number" min="1" step="1" value={prixContre} onChange={(e) => setPrixContre(e.target.value)} required />                            </div>
+                                <input type="number" min="1" step="1" value={prixContre} onChange={(e) => setPrixContre(e.target.value)} required />
+                            </div>
                             <div>
                                 <label>Quantité : </label>
-                                <input type="number" value={quantiteContre} onChange={(e) => setQuantiteContre(e.target.value)} required />
+                                <input type="number" min="1" value={quantiteContre} onChange={(e) => setQuantiteContre(e.target.value)} required />
                             </div>
                             <div>
                                 <label>Message : </label>
@@ -96,7 +97,7 @@ export default function DetailNegociation() {
             )}
 
             {negociation.statut === 'acceptee' && (
-                <p style={{ color: 'green' }}>✓ Négociation acceptée — une commande a été créée automatiquement.</p>
+                <p style={{ color: 'green' }}>✓ Négociation acceptée — une commande a été créée.</p>
             )}
         </div>
     );

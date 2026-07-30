@@ -12,7 +12,12 @@ import DetailOffre from './pages/acheteur/DetailOffre';
 import DetailNegociation from './pages/acheteur/DetailNegociation';
 import DetailCommande from './pages/acheteur/DetailCommande';
 import ProfilAcheteur from './pages/acheteur/Profil';
-
+import PublierOffre from './pages/producteur/PublierOffre';
+import RepondreNegociation from './pages/producteur/RepondreNegociation';
+import ModifierOffre from './pages/producteur/ModifierOffre';
+import DetailCommandeProducteur from './pages/producteur/DetailCommande';
+import HistoriqueVentes from './pages/producteur/HistoriqueVentes';
+import ProfilProducteur from './pages/producteur/Profil';
 function App() {
   return (
       <BrowserRouter>
@@ -63,10 +68,41 @@ function App() {
                 <DashboardAdmin />
               </ProtectedRoute>
             } />
+            <Route path="/producteur/offres/nouvelle" element={
+              <ProtectedRoute allowedRoles={['producteur']}>
+                <PublierOffre />
+              </ProtectedRoute>
+            } />
+              <Route path="/producteur/negociations/:id" element={
+                  <ProtectedRoute allowedRoles={['producteur']}>
+                      <RepondreNegociation />
+                  </ProtectedRoute>
+              } />
+              <Route path="/producteur/offres/:id/modifier" element={
+                  <ProtectedRoute allowedRoles={['producteur']}>
+                      <ModifierOffre />
+                  </ProtectedRoute>
+              } />
+              <Route path="/producteur/commandes/:id" element={
+                  <ProtectedRoute allowedRoles={['producteur']}>
+                      <DetailCommandeProducteur />
+                  </ProtectedRoute>
+              } />
+            <Route path="/producteur/historique" element={
+              <ProtectedRoute allowedRoles={['producteur']}>
+                <HistoriqueVentes />
+              </ProtectedRoute>
+            } />
+            <Route path="/producteur/profil" element={
+              <ProtectedRoute allowedRoles={['producteur']}>
+                <ProfilProducteur />
+              </ProtectedRoute>
+            } />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
   );
+
 }
 
 export default App;

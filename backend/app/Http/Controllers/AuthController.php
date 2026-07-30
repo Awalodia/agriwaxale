@@ -87,6 +87,7 @@ class AuthController extends Controller
     {
         return response()->json($request->user()->load(['acheteur', 'producteur', 'administrateur']));
     }
+
     public function updateProfile(Request $request)
     {
         $user = $request->user();
@@ -96,6 +97,7 @@ class AuthController extends Controller
             'telephone' => 'nullable|string',
             'localisation' => 'nullable|string',
             'adresse_livraison' => 'nullable|string',
+            'zone_production' => 'nullable|string',
         ]);
 
         $user->update([
@@ -108,7 +110,10 @@ class AuthController extends Controller
             $user->acheteur->update(['adresse_livraison' => $validated['adresse_livraison']]);
         }
 
+        if ($user->producteur && isset($validated['zone_production'])) {
+            $user->producteur->update(['zone_production' => $validated['zone_production']]);
+        }
+
         return response()->json($user->load(['acheteur', 'producteur', 'administrateur']));
     }
 }
-

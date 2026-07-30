@@ -71,7 +71,7 @@ export default function DetailOffre() {
                     <h3>Proposer un prix</h3>
                     <div>
                         <label>Prix proposé (FCFA) : </label>
-                        <input type="number" min="1" step="25" value={prixPropose} onChange={(e) => setPrixPropose(e.target.value)} required />
+                        <input type="number" min="1" step="1" value={prixPropose} onChange={(e) => setPrixPropose(e.target.value)} required />
                     </div>
                     <div>
                         <label>Message (optionnel) : </label>

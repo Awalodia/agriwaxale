@@ -68,7 +68,7 @@ class CommandeController extends Controller
     public function update(Request $request, Commande $commande)
     {
         $validated = $request->validate([
-            'action' => 'required|in:valider,annuler',
+            'action' => 'required|in:valider,annuler,confirmer_livraison',
             'adresse_livraison' => 'required_if:action,valider|string',
             'mode_livraison' => 'required_if:action,valider|string',
         ]);
@@ -89,5 +89,15 @@ class CommandeController extends Controller
             $commande->update(['statut' => 'annulee']);
             return response()->json($commande);
         }
+
+        if ($validated['action'] === 'confirmer_livraison') {
+            $producteur = $request->user()->producteur;
+            if (! $producteur) {
+                return response()->json(['message' => 'Seul un producteur peut confirmer une livraison.'], 403);
+            }
+            $commande->update(['statut' => 'livree', 'date_livraison' => now()]);
+            return response()->json($commande);
+        }
     }
+
 }
