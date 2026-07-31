@@ -18,6 +18,13 @@ import ModifierOffre from './pages/producteur/ModifierOffre';
 import DetailCommandeProducteur from './pages/producteur/DetailCommande';
 import HistoriqueVentes from './pages/producteur/HistoriqueVentes';
 import ProfilProducteur from './pages/producteur/Profil';
+import GererCategories from './pages/admin/Categories';
+import SuperviserCommandes from './pages/admin/Commandes';
+import SuperviserNegociations from './pages/admin/Negociations';
+import ConsulterEvaluations from './pages/admin/Evaluations';
+import GererUtilisateurs from './pages/admin/Utilisateurs';
+import DetailOffrePublic from './pages/DetailOffrePublic';
+import ProfilProducteurPublic from './pages/ProfilProducteurPublic';
 function App() {
   return (
       <BrowserRouter>
@@ -98,6 +105,33 @@ function App() {
                 <ProfilProducteur />
               </ProtectedRoute>
             } />
+            <Route path="/admin/categories" element={
+              <ProtectedRoute allowedRoles={['administrateur']}>
+                <GererCategories />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/commandes" element={
+              <ProtectedRoute allowedRoles={['administrateur']}>
+                <SuperviserCommandes />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/negociations" element={
+              <ProtectedRoute allowedRoles={['administrateur']}>
+                <SuperviserNegociations />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/evaluations" element={
+              <ProtectedRoute allowedRoles={['administrateur']}>
+                <ConsulterEvaluations />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/utilisateurs" element={
+              <ProtectedRoute allowedRoles={['administrateur']}>
+                <GererUtilisateurs />
+              </ProtectedRoute>
+            } />
+            <Route path="/offres/:id" element={<DetailOffrePublic />} />
+            <Route path="/producteurs/:id" element={<ProfilProducteurPublic />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

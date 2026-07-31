@@ -77,9 +77,7 @@ export default function Catalogue() {
                             <p style={{ fontSize: 13, color: '#666' }}>
                                 {offre.categorie?.nom} · {offre.producteur?.user?.name}
                             </p>
-                            {role === 'acheteur' && (
-                                <Link to={`/acheteur/offres/${offre.id}`}>Voir / Négocier</Link>
-                            )}
+                            <Link to={`/offres/${offre.id}`}>Voir le détail</Link>
                         </div>
                     ))}
                 </div>
