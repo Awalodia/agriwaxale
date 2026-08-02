@@ -2,106 +2,161 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
+import DashboardLayout from '../../components/DashboardLayout';
 
 export default function DashboardProducteur() {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [offres, setOffres] = useState([]);
     const [negociations, setNegociations] = useState([]);
     const [commandes, setCommandes] = useState([]);
+    const [evaluations, setEvaluations] = useState([]);
     const [chargement, setChargement] = useState(true);
 
-    useEffect(() => {
+    const charger = () => {
         Promise.all([
             api.get('/offres', { params: { mine: true } }),
             api.get('/negociations'),
             api.get('/commandes'),
-        ]).then(([resOffres, resNego, resCmd]) => {
+            api.get('/mes-evaluations'),
+        ]).then(([resOffres, resNego, resCmd, resEval]) => {
             setOffres(resOffres.data);
             setNegociations(resNego.data);
             setCommandes(resCmd.data);
+            setEvaluations(resEval.data);
         }).finally(() => setChargement(false));
-    }, []);
+    };
 
-    const statutCouleur = (statut) => {
-        if (['acceptee', 'confirmee'].includes(statut)) return 'green';
-        if (['refusee', 'annulee'].includes(statut)) return 'red';
-        return '#888';
+    useEffect(() => { charger(); }, []);
+
+    const badge = (statut) => {
+        if (['acceptee', 'confirmee', 'livree'].includes(statut)) return 'text-bg-success';
+        if (['refusee', 'annulee'].includes(statut)) return 'text-bg-danger';
+        return 'text-bg-secondary';
     };
 
     const handleSupprimer = async (id) => {
         if (!confirm('Supprimer cette offre ?')) return;
         await api.delete(`/offres/${id}`);
-        setOffres(offres.filter((o) => o.id !== id));
+        charger();
     };
 
-    if (chargement) return <p>Chargement...</p>;
+    if (chargement) return <DashboardLayout title="Espace producteur"><p>Chargement...</p></DashboardLayout>;
 
     const negociationsEnCours = negociations.filter((n) => n.statut === 'en_cours');
+    const ventes = commandes.filter((c) => ['confirmee', 'livree'].includes(c.statut))
+        .reduce((sum, c) => sum + (c.ligne_commandes?.reduce((s, l) => s + l.sous_total, 0) || 0), 0);
+    const noteMoyenne = evaluations.length ? (evaluations.reduce((s, e) => s + e.note, 0) / evaluations.length).toFixed(1) : '—';
 
     return (
-        <div style={{ maxWidth: 800, margin: '30px auto', padding: '0 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>Mon espace Producteur</h1>
-                <div>
-                    <Link to="/" style={{ marginRight: 10 }}>Voir le catalogue</Link>
-                    <button onClick={logout}>Se déconnecter</button>
+        <DashboardLayout title="Espace producteur" subtitle={`Bienvenue, ${user?.name}`}>
+            <div className="d-flex justify-content-end mb-3">
+                <Link to="/producteur/offres/nouvelle" className="btn btn-agri"><i className="bi bi-plus-circle me-2"></i> Publier une offre</Link>
+            </div>
+
+            <div className="row g-4 mb-4">
+                <div className="col-md-3">
+                    <div className="dashboard-card">
+                        <span className="dashboard-icon"><i className="bi bi-box-seam"></i></span>
+                        <div className="dashboard-number">{offres.length}</div>
+                        <span className="text-secondary">Offres actives</span>
+                    </div>
+                </div>
+                <div className="col-md-3">
+                    <div className="dashboard-card">
+                        <span className="dashboard-icon"><i className="bi bi-chat-dots"></i></span>
+                        <div className="dashboard-number">{negociationsEnCours.length}</div>
+                        <span className="text-secondary">Négociations en attente</span>
+                    </div>
+                </div>
+                <div className="col-md-3">
+                    <div className="dashboard-card">
+                        <span className="dashboard-icon"><i className="bi bi-cash-stack"></i></span>
+                        <div className="dashboard-number">{ventes} F</div>
+                        <span className="text-secondary">Ventes réalisées</span>
+                    </div>
+                </div>
+                <div className="col-md-3">
+                    <div className="dashboard-card">
+                        <span className="dashboard-icon"><i className="bi bi-star"></i></span>
+                        <div className="dashboard-number">{noteMoyenne} <small style={{ fontSize: '1rem' }}>/5</small></div>
+                        <span className="text-secondary">{evaluations.length} évaluation(s)</span>
+                    </div>
                 </div>
             </div>
 
-            <p>Bienvenue, {user?.name}</p>
-
-            <div style={{ display: 'flex', gap: 10, margin: '20px 0' }}>
-                <Link to="/producteur/offres/nouvelle">+ Publier une offre</Link>
-                <Link to="/producteur/historique">Historique des ventes</Link>
-                <Link to="/producteur/profil">Gérer mon profil</Link>
+            <div className="table-card">
+                <h5 className="fw-bold mb-4">Mes offres</h5>
+                <div className="table-responsive">
+                    <table className="table align-middle">
+                        <thead><tr><th>Produit</th><th>Prix</th><th>Quantité</th><th>Statut</th><th>Actions</th></tr></thead>
+                        <tbody>
+                        {offres.map((o) => (
+                            <tr key={o.id}>
+                                <td>{o.nom_produit}</td>
+                                <td>{o.prix_initial} F</td>
+                                <td>{o.quantite} {o.unite}</td>
+                                <td><span className="badge text-bg-success">{o.statut}</span></td>
+                                <td>
+                                    <Link to={`/producteur/offres/${o.id}/modifier`} className="btn btn-sm btn-outline-agri me-1">Modifier</Link>
+                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleSupprimer(o.id)}>Supprimer</button>
+                                </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <h2>Mes offres ({offres.length})</h2>
-            {offres.length === 0 ? (
-                <p>Vous n'avez publié aucune offre.</p>
-            ) : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {offres.map((o) => (
-                        <li key={o.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6, display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{o.nom_produit} — {o.prix_initial} FCFA — {o.quantite} dispo — <em>{o.statut}</em></span>
-                            <span>
-                <Link to={`/producteur/offres/${o.id}/modifier`} style={{ marginRight: 10 }}>Modifier</Link>
-                <button onClick={() => handleSupprimer(o.id)}>Supprimer</button>
-              </span>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <div className="table-card">
+                <h5 className="fw-bold mb-4">Négociations en attente</h5>
+                {negociationsEnCours.length === 0 ? <p className="text-secondary">Aucune négociation en cours.</p> : (
+                    <table className="table align-middle">
+                        <thead><tr><th>Produit</th><th>Acheteur</th><th>Statut</th></tr></thead>
+                        <tbody>
+                        {negociationsEnCours.map((n) => (
+                            <tr key={n.id}>
+                                <td><Link to={`/producteur/negociations/${n.id}`}>{n.offre?.nom_produit}</Link></td>
+                                <td>{n.acheteur?.user?.name}</td>
+                                <td><span className={`badge ${badge(n.statut)}`}>{n.statut}</span></td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
 
-            <h2>Négociations en attente de ma réponse ({negociationsEnCours.length})</h2>
-            {negociationsEnCours.length === 0 ? (
-                <p>Aucune négociation en cours.</p>
-            ) : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {negociationsEnCours.map((n) => (
-                        <li key={n.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6 }}>
-                            <Link to={`/producteur/negociations/${n.id}`}>
-                                {n.offre?.nom_produit} — <span style={{ color: statutCouleur(n.statut) }}>{n.statut}</span>
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            )}
-
-            <h2>Commandes reçues</h2>
-            {commandes.length === 0 ? (
-                <p>Aucune commande pour le moment.</p>
-            ) : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
+            <div className="table-card">
+                <h5 className="fw-bold mb-4">Commandes reçues</h5>
+                <table className="table align-middle">
+                    <thead><tr><th>Référence</th><th>Acheteur</th><th>Statut</th></tr></thead>
+                    <tbody>
                     {commandes.map((c) => (
-                        <li key={c.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6 }}>
-                            <Link to={`/producteur/commandes/${c.id}`}>
-                                Commande #{c.id} — <span style={{ color: statutCouleur(c.statut) }}>{c.statut}</span> — {c.acheteur?.user?.name}
-                            </Link>
-                        </li>
+                        <tr key={c.id}>
+                            <td><Link to={`/producteur/commandes/${c.id}`}>Commande #{c.id}</Link></td>
+                            <td>{c.acheteur?.user?.name}</td>
+                            <td><span className={`badge ${badge(c.statut)}`}>{c.statut}</span></td>
+                        </tr>
                     ))}
-                </ul>
-            )}
-        </div>
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="table-card">
+                <h5 className="fw-bold mb-4">Mes évaluations reçues</h5>
+                {evaluations.length === 0 ? <p className="text-secondary">Aucune évaluation reçue.</p> : (
+                    <table className="table align-middle">
+                        <thead><tr><th>Note</th><th>Commentaire</th></tr></thead>
+                        <tbody>
+                        {evaluations.map((e) => (
+                            <tr key={e.id}>
+                                <td className="text-warning">{'★'.repeat(e.note)}{'☆'.repeat(5 - e.note)}</td>
+                                <td className="fst-italic">{e.commentaire}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </DashboardLayout>
     );
 }

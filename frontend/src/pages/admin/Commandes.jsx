@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import DashboardLayout from '../../components/DashboardLayout';
 
 export default function SuperviserCommandes() {
     const [commandes, setCommandes] = useState([]);
@@ -9,27 +9,29 @@ export default function SuperviserCommandes() {
         api.get('/admin/commandes').then((res) => setCommandes(res.data));
     }, []);
 
-    const statutCouleur = (statut) => {
-        if (['confirmee', 'livree'].includes(statut)) return 'green';
-        if (statut === 'annulee') return 'red';
-        return '#888';
+    const badge = (statut) => {
+        if (['confirmee', 'livree'].includes(statut)) return 'text-bg-success';
+        if (statut === 'annulee') return 'text-bg-danger';
+        return 'text-bg-secondary';
     };
 
     return (
-        <div style={{ maxWidth: 700, margin: '30px auto' }}>
-            <Link to="/admin">← Retour à mon espace</Link>
-            <h1>Superviser les commandes ({commandes.length})</h1>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-                {commandes.map((c) => (
-                    <li key={c.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6 }}>
-                        <p>Commande #{c.id} — <span style={{ color: statutCouleur(c.statut) }}>{c.statut}</span></p>
-                        <p style={{ fontSize: 13, color: '#666' }}>Acheteur : {c.acheteur?.user?.name}</p>
-                        {c.ligne_commandes?.map((l) => (
-                            <p key={l.id} style={{ fontSize: 13, color: '#666' }}>{l.offre?.nom_produit} × {l.quantite}</p>
-                        ))}
-                    </li>
-                ))}
-            </ul>
-        </div>
+        <DashboardLayout title={`Commandes (${commandes.length})`}>
+            <div className="table-card">
+                <table className="table align-middle">
+                    <thead><tr><th>Référence</th><th>Acheteur</th><th>Produits</th><th>Statut</th></tr></thead>
+                    <tbody>
+                    {commandes.map((c) => (
+                        <tr key={c.id}>
+                            <td>Commande #{c.id}</td>
+                            <td>{c.acheteur?.user?.name}</td>
+                            <td>{c.ligne_commandes?.map((l) => `${l.offre?.nom_produit} × ${l.quantite}`).join(', ')}</td>
+                            <td><span className={`badge ${badge(c.statut)}`}>{c.statut}</span></td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
+        </DashboardLayout>
     );
 }

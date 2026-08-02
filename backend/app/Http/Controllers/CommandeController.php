@@ -3,25 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commande;
+use App\Models\LigneCommande;
+use App\Models\Offre;
 use Illuminate\Http\Request;
 
 class CommandeController extends Controller
 {
-    // Suivre ses commandes
     public function index(Request $request)
     {
         $user = $request->user();
 
         if ($user->acheteur) {
             $commandes = Commande::where('acheteur_id', $user->acheteur->id)
-                ->with(['ligneCommandes.offre', 'paiement', 'evaluation'])->get();
+                ->where('statut', '!=', 'brouillon')
+                ->with(['ligneCommandes.offre', 'paiement', 'evaluation'])
+                ->latest()
+                ->get();
         } elseif ($user->producteur) {
-            // Le producteur voit les commandes liées à ses offres
             $commandes = Commande::whereHas('ligneCommandes.offre', function ($q) use ($user) {
                 $q->where('producteur_id', $user->producteur->id);
-            })->with(['ligneCommandes.offre', 'acheteur.user'])->get();
+            })->where('statut', '!=', 'brouillon')->with(['ligneCommandes.offre', 'acheteur.user'])->get();
         } else {
-            $commandes = Commande::with(['ligneCommandes.offre', 'acheteur.user'])->get(); // admin
+            $commandes = Commande::where('statut', '!=', 'brouillon')->with(['ligneCommandes.offre', 'acheteur.user'])->get();
         }
 
         return response()->json($commandes);
@@ -32,39 +35,84 @@ class CommandeController extends Controller
         return response()->json($commande->load(['ligneCommandes.offre', 'paiement', 'evaluation', 'acheteur.user']));
     }
 
-    // Une commande "libre" (achat direct, sans négociation) — optionnel selon ton flux
+    // Panier : la commande brouillon en cours de l'acheteur connecté
+    public function panier(Request $request)
+    {
+        $acheteur = $request->user()->acheteur;
+        if (! $acheteur) {
+            return response()->json(['message' => 'Réservé aux acheteurs.'], 403);
+        }
+        $commande = Commande::where('acheteur_id', $acheteur->id)
+            ->where('statut', 'brouillon')
+            ->with('ligneCommandes.offre.producteur.user')
+            ->first();
+
+        return response()->json($commande);
+    }
+
+    // Ajouter un produit au panier (crée le panier s'il n'existe pas encore)
     public function store(Request $request)
     {
         $acheteur = $request->user()->acheteur;
         if (! $acheteur) {
-            return response()->json(['message' => 'Seul un acheteur peut passer commande.'], 403);
+            return response()->json(['message' => 'Seul un acheteur peut ajouter un produit au panier.'], 403);
         }
 
         $validated = $request->validate([
             'offre_id' => 'required|exists:offres,id',
-            'quantite' => 'required|numeric|min:0',
+            'quantite' => 'required|integer|min:1',
         ]);
 
-        $offre = \App\Models\Offre::findOrFail($validated['offre_id']);
+        $offre = Offre::findOrFail($validated['offre_id']);
 
-        $commande = Commande::create([
-            'acheteur_id' => $acheteur->id,
-            'statut' => 'en_attente',
-            'date_creation' => now(),
-        ]);
+        if ($validated['quantite'] > $offre->quantite) {
+            return response()->json(['message' => 'La quantité demandée dépasse le stock disponible.'], 422);
+        }
 
-        \App\Models\LigneCommande::create([
-            'commande_id' => $commande->id,
-            'offre_id' => $offre->id,
-            'quantite' => $validated['quantite'],
-            'prix_unitaire' => $offre->prix_initial,
-            'sous_total' => $offre->prix_initial * $validated['quantite'],
-        ]);
+        $commande = Commande::firstOrCreate(
+            ['acheteur_id' => $acheteur->id, 'statut' => 'brouillon'],
+            ['date_creation' => now()]
+        );
 
-        return response()->json($commande->load('ligneCommandes'), 201);
+        $ligne = $commande->ligneCommandes()->where('offre_id', $offre->id)->first();
+
+        if ($ligne) {
+            $nouvelleQuantite = $ligne->quantite + $validated['quantite'];
+            $ligne->update([
+                'quantite' => $nouvelleQuantite,
+                'sous_total' => $nouvelleQuantite * $offre->prix_initial,
+            ]);
+        } else {
+            LigneCommande::create([
+                'commande_id' => $commande->id,
+                'offre_id' => $offre->id,
+                'quantite' => $validated['quantite'],
+                'prix_unitaire' => $offre->prix_initial,
+                'sous_total' => $offre->prix_initial * $validated['quantite'],
+            ]);
+        }
+
+        $offre->decrement('quantite', $validated['quantite']);
+
+        return response()->json($commande->load('ligneCommandes.offre'), 201);
     }
 
-    // Valider la commande («include» Renseigner l'adresse) / Annuler la commande («extend» de Suivre)
+    // Retirer une ligne du panier (restitue le stock)
+    public function removeLigne(Request $request, $ligneId)
+    {
+        $ligne = LigneCommande::findOrFail($ligneId);
+        $commande = $ligne->commande;
+
+        if (! $commande || $commande->acheteur_id !== $request->user()->acheteur?->id || $commande->statut !== 'brouillon') {
+            return response()->json(['message' => 'Action non autorisée.'], 403);
+        }
+
+        $ligne->offre?->increment('quantite', $ligne->quantite);
+        $ligne->delete();
+
+        return response()->json(['message' => 'Produit retiré du panier.']);
+    }
+
     public function update(Request $request, Commande $commande)
     {
         $validated = $request->validate([
@@ -74,6 +122,9 @@ class CommandeController extends Controller
         ]);
 
         if ($validated['action'] === 'valider') {
+            if (empty($commande->ligneCommandes()->count())) {
+                return response()->json(['message' => 'Le panier est vide.'], 422);
+            }
             $commande->update([
                 'adresse_livraison' => $validated['adresse_livraison'],
                 'mode_livraison' => $validated['mode_livraison'],
@@ -85,6 +136,9 @@ class CommandeController extends Controller
         if ($validated['action'] === 'annuler') {
             if (in_array($commande->statut, ['confirmee', 'livree'])) {
                 return response()->json(['message' => 'Cette commande ne peut plus être annulée.'], 403);
+            }
+            foreach ($commande->ligneCommandes as $ligne) {
+                $ligne->offre?->increment('quantite', $ligne->quantite);
             }
             $commande->update(['statut' => 'annulee']);
             return response()->json($commande);
@@ -99,5 +153,4 @@ class CommandeController extends Controller
             return response()->json($commande);
         }
     }
-
 }

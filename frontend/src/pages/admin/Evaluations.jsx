@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import DashboardLayout from '../../components/DashboardLayout';
 
 export default function ConsulterEvaluations() {
     const [evaluations, setEvaluations] = useState([]);
@@ -10,17 +10,23 @@ export default function ConsulterEvaluations() {
     }, []);
 
     return (
-        <div style={{ maxWidth: 700, margin: '30px auto' }}>
-            <Link to="/admin">← Retour à mon espace</Link>
-            <h1>Évaluations ({evaluations.length})</h1>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-                {evaluations.map((e) => (
-                    <li key={e.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6 }}>
-                        <p>{'⭐'.repeat(e.note)} — {e.producteur?.user?.name}</p>
-                        {e.commentaire && <p style={{ fontStyle: 'italic' }}>"{e.commentaire}"</p>}
-                    </li>
-                ))}
-            </ul>
-        </div>
+        <DashboardLayout title={`Évaluations (${evaluations.length})`}>
+            <div className="table-card">
+                {evaluations.length === 0 ? <p className="text-secondary">Aucune évaluation.</p> : (
+                    <table className="table align-middle">
+                        <thead><tr><th>Producteur</th><th>Note</th><th>Commentaire</th></tr></thead>
+                        <tbody>
+                        {evaluations.map((e) => (
+                            <tr key={e.id}>
+                                <td>{e.producteur?.user?.name}</td>
+                                <td className="text-warning">{'★'.repeat(e.note)}{'☆'.repeat(5 - e.note)}</td>
+                                <td className="fst-italic">{e.commentaire}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </DashboardLayout>
     );
 }

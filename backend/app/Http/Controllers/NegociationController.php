@@ -5,23 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Negociation;
 use App\Models\PropositionNegociation;
 use App\Models\Commande;
+use App\Models\LigneCommande;
 use Illuminate\Http\Request;
 
 class NegociationController extends Controller
 {
-    // Lister les négociations de l'utilisateur connecté (acheteur ou producteur)
     public function index(Request $request)
     {
         $user = $request->user();
 
         if ($user->acheteur) {
-            $negociations = Negociation::where('acheteur_id', $user->acheteur->id)
-                ->with(['offre', 'propositions.auteur'])->get();
+            $negociations = Negociation::where('acheteur_id', $user->acheteur->id)->with(['offre', 'propositions.auteur'])->get();
         } elseif ($user->producteur) {
-            $negociations = Negociation::where('producteur_id', $user->producteur->id)
-                ->with(['offre', 'propositions.auteur'])->get();
+            $negociations = Negociation::where('producteur_id', $user->producteur->id)->with(['offre', 'propositions.auteur'])->get();
         } else {
-            $negociations = Negociation::with(['offre', 'propositions.auteur'])->get(); // admin
+            $negociations = Negociation::with(['offre', 'propositions.auteur'])->get();
         }
 
         return response()->json($negociations);
@@ -32,7 +30,6 @@ class NegociationController extends Controller
         return response()->json($negociation->load(['offre', 'acheteur.user', 'producteur.user', 'propositions.auteur']));
     }
 
-    // Lancer une négociation = "Négocier une offre" + "Proposer un prix" (première proposition)
     public function store(Request $request)
     {
         $acheteur = $request->user()->acheteur;
@@ -42,12 +39,16 @@ class NegociationController extends Controller
 
         $validated = $request->validate([
             'offre_id' => 'required|exists:offres,id',
-            'prix_propose' => 'required|integer|min:0',
-            'quantite_proposee' => 'required|numeric|min:0',
+            'prix_propose' => 'required|integer|min:50',
+            'quantite_proposee' => 'required|integer|min:1',
             'message' => 'nullable|string',
         ]);
 
         $offre = \App\Models\Offre::findOrFail($validated['offre_id']);
+
+        if ($validated['quantite_proposee'] > $offre->quantite) {
+            return response()->json(['message' => 'La quantité demandée dépasse le stock disponible.'], 422);
+        }
 
         $negociation = Negociation::create([
             'offre_id' => $offre->id,
@@ -70,30 +71,51 @@ class NegociationController extends Controller
         return response()->json($negociation->load('propositions'), 201);
     }
 
-    // Répondre à une négociation : accepter / refuser / contre-proposer / annuler
     public function update(Request $request, Negociation $negociation)
     {
         $validated = $request->validate([
             'action' => 'required|in:accepter,refuser,contre_proposer,annuler',
-            'prix_propose' => 'required_if:action,contre_proposer|integer|min:0',
-            'quantite_proposee' => 'required_if:action,contre_proposer|numeric|min:0',
+            'prix_propose' => 'required_if:action,contre_proposer|integer|min:50',
+            'quantite_proposee' => 'required_if:action,contre_proposer|integer|min:1',
             'message' => 'nullable|string',
         ]);
+
+        $derniereProposition = $negociation->propositions()->latest()->first();
+
+        if ($derniereProposition
+            && $derniereProposition->user_id === $request->user()->id
+            && $validated['action'] !== 'annuler') {
+            return response()->json(['message' => "Vous devez attendre la réponse de l'autre partie avant d'agir à nouveau."], 403);
+        }
 
         switch ($validated['action']) {
             case 'accepter':
                 $negociation->update(['statut' => 'acceptee', 'date_cloture' => now()]);
 
-                // Une négociation acceptée génère une commande
-                $commande = Commande::create([
-                    'acheteur_id' => $negociation->acheteur_id,
-                    'negociation_id' => $negociation->id,
-                    'statut' => 'en_attente',
-                    'date_creation' => now(),
-                ]);
+                if (!empty($validated['message'] ?? null)) {
+                    PropositionNegociation::create([
+                        'negociation_id' => $negociation->id,
+                        'user_id' => $request->user()->id,
+                        'prix_propose' => $derniereProposition->prix_propose,
+                        'quantite_proposee' => $derniereProposition->quantite_proposee,
+                        'statut' => 'acceptee',
+                        'date_proposition' => now(),
+                        'message' => $validated['message'],
+                    ]);
+                }
 
-                $derniereProposition = $negociation->propositions()->latest()->first();
-                \App\Models\LigneCommande::create([
+                $offre = $negociation->offre;
+                if ($derniereProposition->quantite_proposee > $offre->quantite) {
+                    return response()->json(['message' => 'Stock insuffisant pour accepter cette négociation.'], 422);
+                }
+
+                // Réutilise le panier existant (brouillon) s'il y en a déjà un, sinon en crée un.
+                $commande = Commande::firstOrCreate(
+                    ['acheteur_id' => $negociation->acheteur_id, 'statut' => 'brouillon'],
+                    ['date_creation' => now(), 'negociation_id' => $negociation->id]
+                );
+
+                LigneCommande::create([
                     'commande_id' => $commande->id,
                     'offre_id' => $negociation->offre_id,
                     'quantite' => $derniereProposition->quantite_proposee,
@@ -101,10 +123,23 @@ class NegociationController extends Controller
                     'sous_total' => $derniereProposition->prix_propose * $derniereProposition->quantite_proposee,
                 ]);
 
+                $offre->decrement('quantite', $derniereProposition->quantite_proposee);
+
                 return response()->json(['negociation' => $negociation, 'commande' => $commande]);
 
             case 'refuser':
                 $negociation->update(['statut' => 'refusee', 'date_cloture' => now()]);
+                if (!empty($validated['message'] ?? null)) {
+                    PropositionNegociation::create([
+                        'negociation_id' => $negociation->id,
+                        'user_id' => $request->user()->id,
+                        'prix_propose' => $derniereProposition->prix_propose,
+                        'quantite_proposee' => $derniereProposition->quantite_proposee,
+                        'statut' => 'refusee',
+                        'date_proposition' => now(),
+                        'message' => $validated['message'],
+                    ]);
+                }
                 return response()->json($negociation);
 
             case 'annuler':
@@ -112,6 +147,10 @@ class NegociationController extends Controller
                 return response()->json($negociation);
 
             case 'contre_proposer':
+                $offre = $negociation->offre;
+                if ($validated['quantite_proposee'] > $offre->quantite) {
+                    return response()->json(['message' => 'La quantité demandée dépasse le stock disponible.'], 422);
+                }
                 PropositionNegociation::create([
                     'negociation_id' => $negociation->id,
                     'user_id' => $request->user()->id,

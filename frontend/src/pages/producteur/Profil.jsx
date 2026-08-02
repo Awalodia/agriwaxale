@@ -1,65 +1,77 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import DashboardLayout from '../../components/DashboardLayout';
 
 export default function ProfilProducteur() {
+    const [donnees, setDonnees] = useState(null);
+    const [edition, setEdition] = useState(false);
     const [nom, setNom] = useState('');
     const [telephone, setTelephone] = useState('');
     const [zoneProduction, setZoneProduction] = useState('');
-    const [statutCompte, setStatutCompte] = useState(false);
     const [messageOk, setMessageOk] = useState(false);
     const [erreur, setErreur] = useState('');
 
     useEffect(() => {
         api.get('/profile').then((res) => {
+            setDonnees(res.data);
             setNom(res.data.name);
             setTelephone(res.data.telephone || '');
             setZoneProduction(res.data.producteur?.zone_production || '');
-            setStatutCompte(res.data.producteur?.statut_compte || false);
         });
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setErreur('');
-        setMessageOk(false);
+        setErreur(''); setMessageOk(false);
         try {
-            await api.put('/profile', { name: nom, telephone, zone_production: zoneProduction });
+            const res = await api.put('/profile', { name: nom, telephone, zone_production: zoneProduction });
+            setDonnees(res.data);
             setMessageOk(true);
-        } catch (err) {
-            setErreur('Erreur lors de la mise à jour.');
-        }
+            setEdition(false);
+        } catch (err) { setErreur('Erreur lors de la mise à jour.'); }
     };
 
+    if (!donnees) return <DashboardLayout title="Mon profil"><p>Chargement...</p></DashboardLayout>;
+
+    const statutCompte = donnees.producteur?.statut_compte;
+
     return (
-        <div style={{ maxWidth: 500, margin: '30px auto' }}>
-            <Link to="/producteur">← Retour à mon espace</Link>
-            <h1>Mon profil</h1>
+        <DashboardLayout title="Mon profil">
+            <div className="table-card" style={{ maxWidth: 500 }}>
+                <p>
+                    Statut du compte :{' '}
+                    {statutCompte ? <span className="badge text-bg-success">Vérifié</span> : <span className="badge text-bg-warning">En attente de vérification</span>}
+                </p>
+                {messageOk && <div className="alert alert-success py-2">Profil mis à jour.</div>}
 
-            <p>
-                Statut du compte :{' '}
-                {statutCompte
-                    ? <span style={{ color: 'green' }}>✓ Vérifié</span>
-                    : <span style={{ color: 'orange' }}>En attente de vérification par l'administrateur</span>}
-            </p>
-
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Nom : </label>
-                    <input value={nom} onChange={(e) => setNom(e.target.value)} required />
-                </div>
-                <div>
-                    <label>Téléphone : </label>
-                    <input value={telephone} onChange={(e) => setTelephone(e.target.value)} />
-                </div>
-                <div>
-                    <label>Zone de production : </label>
-                    <input value={zoneProduction} onChange={(e) => setZoneProduction(e.target.value)} />
-                </div>
-                {messageOk && <p style={{ color: 'green' }}>Profil mis à jour.</p>}
-                {erreur && <p style={{ color: 'red' }}>{erreur}</p>}
-                <button type="submit">Enregistrer</button>
-            </form>
-        </div>
+                {!edition ? (
+                    <div>
+                        <p><strong>Nom :</strong> {donnees.name}</p>
+                        <p><strong>Email :</strong> {donnees.email}</p>
+                        <p><strong>Téléphone :</strong> {donnees.telephone || '—'}</p>
+                        <p><strong>Zone de production :</strong> {donnees.producteur?.zone_production || '—'}</p>
+                        <button className="btn btn-agri" onClick={() => setEdition(true)}>Modifier</button>
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit}>
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold">Nom</label>
+                            <input className="form-control" value={nom} onChange={(e) => setNom(e.target.value)} required />
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold">Téléphone</label>
+                            <input className="form-control" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold">Zone de production</label>
+                            <input className="form-control" value={zoneProduction} onChange={(e) => setZoneProduction(e.target.value)} />
+                        </div>
+                        {erreur && <div className="alert alert-danger py-2">{erreur}</div>}
+                        <button type="submit" className="btn btn-agri me-2">Enregistrer</button>
+                        <button type="button" className="btn btn-outline-secondary" onClick={() => setEdition(false)}>Annuler</button>
+                    </form>
+                )}
+            </div>
+        </DashboardLayout>
     );
 }

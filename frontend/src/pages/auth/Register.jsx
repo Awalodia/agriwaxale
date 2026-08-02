@@ -10,9 +10,7 @@ export default function Register() {
     const { register } = useAuth();
     const navigate = useNavigate();
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    };
+    const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -27,38 +25,45 @@ export default function Register() {
     };
 
     return (
-        <div style={{ maxWidth: 400, margin: '50px auto' }}>
-            <h2>Créer un compte</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Nom</label>
-                    <input name="name" value={form.name} onChange={handleChange} required />
+        <div className="d-flex align-items-center justify-content-center py-5" style={{ minHeight: '100vh', backgroundColor: 'var(--light)' }}>
+            <div className="bg-white p-4 rounded-4 shadow-sm" style={{ maxWidth: 460, width: '100%' }}>
+                <div className="text-center mb-4">
+                    <span className="logo mb-2" style={{ display: 'inline-flex' }}><i className="bi bi-flower1"></i></span>
+                    <h3 className="fw-bold mt-2">Créer un compte</h3>
                 </div>
-                <div>
-                    <label>Email</label>
-                    <input type="email" name="email" value={form.email} onChange={handleChange} required />
-                </div>
-                <div>
-                    <label>Mot de passe</label>
-                    <input type="password" name="password" value={form.password} onChange={handleChange} required />
-                </div>
-                <div>
-                    <label>Je suis un(e)</label>
-                    <select name="role" value={form.role} onChange={handleChange}>
-                        <option value="acheteur">Acheteur</option>
-                        <option value="producteur">Producteur</option>
-                    </select>
-                </div>
-                {form.role === 'producteur' && (
-                    <div>
-                        <label>Zone de production</label>
-                        <input name="localisation" value={form.localisation} onChange={handleChange} />
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label className="form-label fw-semibold">Nom</label>
+                        <input name="name" className="form-control" value={form.name} onChange={handleChange} required />
                     </div>
-                )}
-                {erreur && <p style={{ color: 'red' }}>{erreur}</p>}
-                <button type="submit">S'inscrire</button>
-            </form>
-            <p>Déjà un compte ? <Link to="/login">Se connecter</Link></p>
+                    <div className="mb-3">
+                        <label className="form-label fw-semibold">Adresse électronique</label>
+                        <input type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label fw-semibold">Mot de passe</label>
+                        <input type="password" name="password" className="form-control" value={form.password} onChange={handleChange} required />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label fw-semibold">Je suis un(e)</label>
+                        <select name="role" className="form-select" value={form.role} onChange={handleChange}>
+                            <option value="acheteur">Acheteur</option>
+                            <option value="producteur">Producteur</option>
+                        </select>
+                    </div>
+                    {form.role === 'producteur' && (
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold">Zone de production</label>
+                            <input name="localisation" className="form-control" value={form.localisation} onChange={handleChange} />
+                        </div>
+                    )}
+                    {erreur && <div className="alert alert-danger py-2">{erreur}</div>}
+                    <button type="submit" className="btn btn-agri w-100 py-2 fw-bold">S'inscrire</button>
+                </form>
+                <p className="text-center mt-3 mb-0">
+                    Déjà un compte ? <Link to="/login" style={{ color: 'var(--green)' }}>Se connecter</Link>
+                </p>
+            </div>
         </div>
     );
 }

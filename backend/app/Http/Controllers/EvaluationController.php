@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 
 class EvaluationController extends Controller
 {
-    // Évaluer un producteur — uniquement après réception d'une commande confirmée
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -19,8 +18,8 @@ class EvaluationController extends Controller
 
         $commande = Commande::with('ligneCommandes.offre.producteur')->findOrFail($validated['commande_id']);
 
-        if ($commande->statut !== 'confirmee') {
-            return response()->json(['message' => 'Seule une commande confirmée peut être évaluée.'], 403);
+        if ($commande->statut !== 'livree') {
+            return response()->json(['message' => 'Seule une commande livrée peut être évaluée.'], 403);
         }
 
         if ($commande->evaluation) {
@@ -38,5 +37,12 @@ class EvaluationController extends Controller
         ]);
 
         return response()->json($evaluation, 201);
+    }
+
+    public function mine(Request $request)
+    {
+        $producteur = $request->user()->producteur;
+        if (! $producteur) return response()->json([], 403);
+        return response()->json($producteur->evaluations()->with('commande')->get());
     }
 }

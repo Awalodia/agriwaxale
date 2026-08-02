@@ -10,7 +10,7 @@ class Offre extends Model
     use HasFactory;
 
     protected $fillable = [
-        'producteur_id', 'categorie_id', 'nom_produit', 'quantite',
+        'producteur_id', 'categorie_id', 'nom_produit', 'quantite', 'unite',
         'prix_initial', 'zone_production', 'photo', 'date_publication', 'statut'
     ];
 

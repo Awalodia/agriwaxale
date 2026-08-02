@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import DashboardLayout from '../../components/DashboardLayout';
 
 export default function GererCategories() {
     const [categories, setCategories] = useState([]);
@@ -8,10 +8,7 @@ export default function GererCategories() {
     const [description, setDescription] = useState('');
     const [erreur, setErreur] = useState('');
 
-    const charger = () => {
-        api.get('/categories').then((res) => setCategories(res.data));
-    };
-
+    const charger = () => { api.get('/categories').then((res) => setCategories(res.data)); };
     useEffect(() => { charger(); }, []);
 
     const handleAjouter = async (e) => {
@@ -19,8 +16,7 @@ export default function GererCategories() {
         setErreur('');
         try {
             await api.post('/admin/categories', { nom, description });
-            setNom('');
-            setDescription('');
+            setNom(''); setDescription('');
             charger();
         } catch (err) {
             setErreur("Erreur lors de l'ajout.");
@@ -33,36 +29,41 @@ export default function GererCategories() {
             await api.delete(`/admin/categories/${id}`);
             charger();
         } catch (err) {
-            alert("Impossible de supprimer : des offres utilisent peut-être encore cette catégorie.");
+            alert("Impossible de supprimer : des offres utilisent cette catégorie.");
         }
     };
 
     return (
-        <div style={{ maxWidth: 600, margin: '30px auto' }}>
-            <Link to="/admin">← Retour à mon espace</Link>
-            <h1>Gérer les catégories</h1>
+        <DashboardLayout title="Gérer les catégories">
+            <div className="table-card">
+                <form onSubmit={handleAjouter} className="row g-3 align-items-end mb-4">
+                    <div className="col-md-4">
+                        <label className="form-label fw-semibold">Nom</label>
+                        <input className="form-control" value={nom} onChange={(e) => setNom(e.target.value)} required />
+                    </div>
+                    <div className="col-md-5">
+                        <label className="form-label fw-semibold">Description</label>
+                        <input className="form-control" value={description} onChange={(e) => setDescription(e.target.value)} />
+                    </div>
+                    <div className="col-md-3">
+                        <button type="submit" className="btn btn-agri w-100">Ajouter</button>
+                    </div>
+                    {erreur && <div className="col-12"><div className="alert alert-danger py-2 mb-0">{erreur}</div></div>}
+                </form>
 
-            <form onSubmit={handleAjouter} style={{ marginBottom: 20 }}>
-                <div>
-                    <label>Nom : </label>
-                    <input value={nom} onChange={(e) => setNom(e.target.value)} required />
-                </div>
-                <div>
-                    <label>Description : </label>
-                    <input value={description} onChange={(e) => setDescription(e.target.value)} />
-                </div>
-                {erreur && <p style={{ color: 'red' }}>{erreur}</p>}
-                <button type="submit">Ajouter</button>
-            </form>
-
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-                {categories.map((c) => (
-                    <li key={c.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6, display: 'flex', justifyContent: 'space-between' }}>
-                        <span><strong>{c.nom}</strong> — {c.description}</span>
-                        <button onClick={() => handleSupprimer(c.id)}>Supprimer</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
+                <table className="table align-middle">
+                    <thead><tr><th>Nom</th><th>Description</th><th></th></tr></thead>
+                    <tbody>
+                    {categories.map((c) => (
+                        <tr key={c.id}>
+                            <td className="fw-bold">{c.nom}</td>
+                            <td>{c.description}</td>
+                            <td><button className="btn btn-sm btn-outline-danger" onClick={() => handleSupprimer(c.id)}>Supprimer</button></td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
+        </DashboardLayout>
     );
 }

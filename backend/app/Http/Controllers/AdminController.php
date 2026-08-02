@@ -13,14 +13,12 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    // Gérer les comptes utilisateurs
     public function utilisateurs()
     {
         $users = User::with(['acheteur', 'producteur', 'administrateur'])->get();
         return response()->json($users);
     }
 
-    // Vérifier ou valider un compte producteur
     public function validerCompte(Request $request, $producteurId)
     {
         $producteur = \App\Models\Producteur::findOrFail($producteurId);
@@ -28,7 +26,6 @@ class AdminController extends Controller
         return response()->json($producteur);
     }
 
-    // Gérer les catégories
     public function storeCategorie(Request $request)
     {
         $validated = $request->validate([
@@ -44,10 +41,9 @@ class AdminController extends Controller
         return response()->json(['message' => 'Catégorie supprimée.']);
     }
 
-    // Superviser les commandes et négociations
     public function commandes()
     {
-        return response()->json(Commande::with(['acheteur.user', 'ligneCommandes.offre'])->get());
+        return response()->json(Commande::where('statut', '!=', 'brouillon')->with(['acheteur.user', 'ligneCommandes.offre'])->get());
     }
 
     public function negociations()
@@ -55,14 +51,11 @@ class AdminController extends Controller
         return response()->json(Negociation::with(['offre', 'acheteur.user', 'producteur.user'])->get());
     }
 
-    // Consulter les évaluations
     public function evaluations()
     {
         return response()->json(Evaluation::with(['producteur.user', 'commande'])->get());
     }
 
-    // Consulter les indicateurs — les 4 catégories du chapitre 1 :
-    // utilisateurs, offres, négociations, transactions
     public function indicateurs()
     {
         return response()->json([
@@ -83,8 +76,8 @@ class AdminController extends Controller
                 'annulees' => Negociation::where('statut', 'annulee')->count(),
             ],
             'statistiques_transactions' => [
-                'total_commandes' => Commande::count(),
-                'commandes_confirmees' => Commande::where('statut', 'confirmee')->count(),
+                'total_commandes' => Commande::where('statut', '!=', 'brouillon')->count(),
+                'commandes_confirmees' => Commande::whereIn('statut', ['confirmee', 'livree'])->count(),
                 'montant_total' => Paiement::where('statut', 'paye')->sum('montant'),
             ],
         ]);

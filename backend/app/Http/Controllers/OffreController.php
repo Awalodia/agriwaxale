@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 
 class OffreController extends Controller
 {
-    // Consulter le catalogue — accessible à tous (Visiteur inclus)
     public function index(Request $request)
     {
         $query = Offre::with(['producteur.user', 'categorie']);
@@ -19,27 +18,27 @@ class OffreController extends Controller
             $query->where('statut', 'disponible');
         }
 
-        // Rechercher un produit / filtrage (catégorie, zone géographique, prix)
-        if ($request->has('categorie_id')) {
+        if ($request->filled('categorie_id')) {
             $query->where('categorie_id', $request->categorie_id);
         }
-        if ($request->has('zone')) {
-            $query->where('zone_production', 'like', '%' . $request->zone . '%');
+        if ($request->filled('zone')) {
+            $query->whereRaw('LOWER(zone_production) LIKE ?', ['%' . strtolower($request->zone) . '%']);
         }
-        if ($request->has('recherche')) {
-            $query->where('nom_produit', 'like', '%' . $request->recherche . '%');
+        if ($request->filled('recherche')) {
+            $query->whereRaw('LOWER(nom_produit) LIKE ?', ['%' . strtolower($request->recherche) . '%']);
+        }
+        if ($request->filled('prix_max')) {
+            $query->where('prix_initial', '<=', $request->prix_max);
         }
 
         return response()->json($query->latest()->get());
     }
 
-    // Consulter le détail d'une offre
     public function show(Offre $offre)
     {
         return response()->json($offre->load(['producteur.user', 'categorie']));
     }
 
-    // Publier une offre — Producteur uniquement
     public function store(Request $request)
     {
         $producteur = $request->user()->producteur;
@@ -50,21 +49,25 @@ class OffreController extends Controller
         $validated = $request->validate([
             'categorie_id' => 'required|exists:categories,id',
             'nom_produit' => 'required|string|max:255',
-            'quantite' => 'required|numeric|min:0',
-            'prix_initial' => 'required|integer|min:0',
+            'quantite' => 'required|integer|min:1',
+            'unite' => 'required|string|in:kg,g,sac,tonne,caisse,unite',
+            'prix_initial' => 'required|integer|min:50',
             'zone_production' => 'nullable|string',
-            'photo' => 'nullable|string',
+            'photo' => 'nullable|image|max:4096',
         ]);
 
         $validated['producteur_id'] = $producteur->id;
         $validated['date_publication'] = now();
         $validated['statut'] = 'disponible';
 
+        if ($request->hasFile('photo')) {
+            $validated['photo'] = $request->file('photo')->store('offres', 'public');
+        }
+
         $offre = Offre::create($validated);
         return response()->json($offre, 201);
     }
 
-    // Modifier une offre — seul le producteur propriétaire
     public function update(Request $request, Offre $offre)
     {
         $producteur = $request->user()->producteur;
@@ -74,16 +77,19 @@ class OffreController extends Controller
 
         $validated = $request->validate([
             'nom_produit' => 'sometimes|string|max:255',
-            'quantite' => 'sometimes|numeric|min:0',
-            'prix_initial' => 'sometimes|integer|min:0',
+            'quantite' => 'sometimes|integer|min:0',
+            'unite' => 'sometimes|string|in:kg,g,sac,tonne,caisse,unite',
+            'prix_initial' => 'sometimes|integer|min:50',
             'statut' => 'sometimes|string',
         ]);
+
+        if ($request->hasFile('photo')) {
+            $validated['photo'] = $request->file('photo')->store('offres', 'public');
+        }
 
         $offre->update($validated);
         return response()->json($offre);
     }
-
-    // Supprimer une offre — seul le producteur propriétaire
     public function destroy(Request $request, Offre $offre)
     {
         $producteur = $request->user()->producteur;

@@ -10,37 +10,32 @@ use App\Http\Controllers\EvaluationController;
 use App\Http\Controllers\AdminController;
 use Illuminate\Support\Facades\Route;
 
-// Routes publiques (Visiteur : pas besoin d'être authentifié)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/offres', [OffreController::class, 'index']);
 Route::get('/offres/{offre}', [OffreController::class, 'show']);
 Route::get('/categories', [CategorieController::class, 'index']);
 
-// Routes protégées (nécessitent d'être authentifié = «include» S'authentifier)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
 
-    // Producteur
     Route::post('/offres', [OffreController::class, 'store']);
+    Route::post('/offres/{offre}', [OffreController::class, 'update']); // POST + _method=PUT pour l'upload photo
     Route::put('/offres/{offre}', [OffreController::class, 'update']);
     Route::delete('/offres/{offre}', [OffreController::class, 'destroy']);
 
-    // Négociation (Acheteur + Producteur)
     Route::apiResource('negociations', NegociationController::class);
 
-    // Commande (Acheteur)
+    Route::get('/panier', [CommandeController::class, 'panier']);
+    Route::delete('/lignes-commande/{ligne}', [CommandeController::class, 'removeLigne']);
     Route::apiResource('commandes', CommandeController::class);
 
-    // Paiement
     Route::post('/paiements', [PaiementController::class, 'store']);
-
-    // Évaluation
     Route::post('/evaluations', [EvaluationController::class, 'store']);
+    Route::get('/mes-evaluations', [EvaluationController::class, 'mine']);
 
-    // Administrateur
     Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/utilisateurs', [AdminController::class, 'utilisateurs']);
         Route::put('/producteurs/{producteurId}/valider', [AdminController::class, 'validerCompte']);

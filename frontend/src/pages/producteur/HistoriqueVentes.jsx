@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import DashboardLayout from '../../components/DashboardLayout';
 
 export default function HistoriqueVentes() {
     const [commandes, setCommandes] = useState([]);
@@ -12,36 +13,29 @@ export default function HistoriqueVentes() {
         }).finally(() => setChargement(false));
     }, []);
 
-    if (chargement) return <p>Chargement...</p>;
+    if (chargement) return <DashboardLayout title="Historique"><p>Chargement...</p></DashboardLayout>;
 
-    const totalVentes = commandes.reduce((sum, c) => {
-        return sum + (c.ligne_commandes?.reduce((s, l) => s + l.sous_total, 0) || 0);
-    }, 0);
+    const totalVentes = commandes.reduce((sum, c) => sum + (c.ligne_commandes?.reduce((s, l) => s + l.sous_total, 0) || 0), 0);
 
     return (
-        <div style={{ maxWidth: 700, margin: '30px auto' }}>
-            <Link to="/producteur">← Retour à mon espace</Link>
-            <h1>Historique des ventes</h1>
-            <p>{commandes.length} vente(s) confirmée(s) — total : <strong>{totalVentes} FCFA</strong></p>
-
-            {commandes.length === 0 ? (
-                <p>Aucune vente confirmée pour le moment.</p>
-            ) : (
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {commandes.map((c) => (
-                        <li key={c.id} style={{ border: '1px solid #ddd', padding: 10, marginBottom: 8, borderRadius: 6 }}>
-                            <Link to={`/producteur/commandes/${c.id}`}>
-                                Commande #{c.id} — {c.acheteur?.user?.name} — <span style={{ color: c.statut === 'livree' ? 'green' : '#888' }}>{c.statut}</span>
-                            </Link>
-                            {c.ligne_commandes?.map((l) => (
-                                <p key={l.id} style={{ fontSize: 13, color: '#666', margin: '4px 0 0 0' }}>
-                                    {l.offre?.nom_produit} × {l.quantite} = {l.sous_total} FCFA
-                                </p>
-                            ))}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
+        <DashboardLayout title="Historique des ventes" subtitle={`${commandes.length} vente(s) — ${totalVentes} FCFA`}>
+            <div className="table-card">
+                {commandes.length === 0 ? <p className="text-secondary">Aucune vente confirmée.</p> : (
+                    <table className="table align-middle">
+                        <thead><tr><th>Référence</th><th>Acheteur</th><th>Produits</th><th>Statut</th></tr></thead>
+                        <tbody>
+                        {commandes.map((c) => (
+                            <tr key={c.id}>
+                                <td><Link to={`/producteur/commandes/${c.id}`}>Commande #{c.id}</Link></td>
+                                <td>{c.acheteur?.user?.name}</td>
+                                <td>{c.ligne_commandes?.map((l) => `${l.offre?.nom_produit} × ${l.quantite}`).join(', ')}</td>
+                                <td><span className={`badge ${c.statut === 'livree' ? 'text-bg-success' : 'text-bg-secondary'}`}>{c.statut}</span></td>
+                            </tr>
+                        ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </DashboardLayout>
     );
 }
