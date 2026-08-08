@@ -4,3 +4,4 @@ node_modules
 storage/logs/*
 .git
 .idea
+bootstrap/cache/*.php

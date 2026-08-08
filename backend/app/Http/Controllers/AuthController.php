@@ -27,6 +27,8 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'telephone' => $validated['telephone'] ?? null,
+            'localisation' => $validated['localisation'] ?? null,
         ]);
 
         // Création du profil selon le rôle choisi à l'inscription
