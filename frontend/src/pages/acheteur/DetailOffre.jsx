@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { photoUrl } from '../../utils';
 
 export default function DetailOffre() {
     const { id } = useParams();
@@ -38,15 +39,13 @@ export default function DetailOffre() {
 
     if (!offre) return <div className="container py-5"><p>Chargement...</p></div>;
 
-    const photoUrl = offre.photo ? `http://localhost:8000/storage/${offre.photo}` : 'https://placehold.co/600x400/eaf7ef/157347?text=AgriWaxal%C3%A9';
-
     return (
         <div style={{ minHeight: '100vh', backgroundColor: 'var(--light)' }}>
             <div className="container py-5" style={{ maxWidth: 650 }}>
                 <Link to="/acheteur" className="btn btn-outline-agri mb-4">← Retour à mon espace</Link>
 
                 <div className="bg-white p-4 rounded-4 shadow-sm">
-                    <img src={photoUrl} alt={offre.nom_produit} className="w-100 rounded-4 mb-3" style={{ height: 280, objectFit: 'cover' }} />
+                    <img src={photoUrl(offre.photo)} alt={offre.nom_produit} className="w-100 rounded-4 mb-3" style={{ height: 280, objectFit: 'cover' }} />
 
                     <div className="d-flex justify-content-between align-items-start">
                         <div>

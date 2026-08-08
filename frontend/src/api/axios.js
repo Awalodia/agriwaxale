@@ -1,10 +1,10 @@
 import axios from 'axios';
+import { API_BASE } from '../utils';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: `${API_BASE}/api`,
 });
 
-// Ajoute automatiquement le token à chaque requête si l'utilisateur est connecté
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {

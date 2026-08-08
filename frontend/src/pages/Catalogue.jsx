@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { photoUrl } from '../utils';
 
 export default function Catalogue() {
     const [offres, setOffres] = useState([]);
@@ -35,7 +36,6 @@ export default function Catalogue() {
     const handleRecherche = (e) => { e.preventDefault(); chargerOffres(); };
 
     const lienEspace = role === 'acheteur' ? '/acheteur' : role === 'producteur' ? '/producteur' : role === 'administrateur' ? '/admin' : null;
-    const photoUrl = (photo) => photo ? `http://localhost:8000/storage/${photo}` : 'https://placehold.co/600x400/eaf7ef/157347?text=AgriWaxal%C3%A9';
 
     return (
         <div>
